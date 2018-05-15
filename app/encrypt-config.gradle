@@ -1,0 +1,66 @@
+buildscript {
+    repositories {
+        maven { url 'https://jitpack.io' }
+    }
+    dependencies {
+        classpath 'com.github.simbiose:Encryption:2.0.1'
+    }
+}
+
+import se.simbio.encryption.Encryption
+
+ext {
+    encryptKey = 'EncryptK3y'
+    encryptSalt = 'EncryptS@lt'
+    outputConfigFileName = 'super-secret-file'
+}
+
+ext.encryptfile = { buildFlavor, buildVariant ->
+    def apiDirConfigFile = 'config.txt'
+
+    def folderName = 'confidential-file'
+    def folderPath = "$project.rootDir/${folderName}/${buildFlavor}/${buildVariant}/"
+    String fileContents = new File("$folderPath$apiDirConfigFile").text
+    def IV = new byte[16]
+    def encryption = Encryption.getDefault(encryptKey, encryptSalt, IV)
+    def data = encryption == null ? "" : encryption.encryptOrNull(fileContents)
+    def file = new File("$buildDir/generated/assets/shaders/$buildFlavor/$buildVariant/$ext.outputConfigFileName")
+    if (!file.getParentFile().exists()) {
+        file.getParentFile().mkdirs()
+    }
+    if (!file.exists()) {
+        try {
+            file.createNewFile()
+        } catch (Exception e) {
+            e.printStackTrace()
+        }
+    }
+    file.write data
+}
+
+def taskFlavorTypes = ["flavor1", "flavor2"]
+def taskVariant = ["debug", "release"]
+
+taskFlavorTypes.each { buildFlavor ->
+    taskVariant.each { buildVariant ->
+        task "encrypt${buildFlavor.capitalize()}${buildVariant.capitalize()}Config" {
+            outputs.upToDateWhen { false }
+            description = "Encrypt ${buildFlavor} ${buildVariant} Config"
+            doLast {
+                encryptfile(buildFlavor, buildVariant)
+            }
+        }
+    }
+}
+
+afterEvaluate {
+    android.productFlavors.all {
+        flavor ->
+            tasks."generate${flavor.name.capitalize()}DebugResources".dependsOn "encrypt${flavor.name.capitalize()}DebugConfig"
+            tasks."generate${flavor.name.capitalize()}ReleaseResources".dependsOn "encrypt${flavor.name.capitalize()}ReleaseConfig"
+    }
+}
+
+dependencies {
+    implementation 'com.github.simbiose:Encryption:2.0.1'
+}
