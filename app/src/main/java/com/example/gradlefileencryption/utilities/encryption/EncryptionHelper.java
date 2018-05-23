@@ -10,8 +10,6 @@ public class EncryptionHelper {
     private EncryptionHelper() {
     }
 
-    /*These fields would be moved to gradle file.*/
-
     private static final int SIZE_BYTE = 16;
     private static final byte[] IV = new byte[SIZE_BYTE];
 

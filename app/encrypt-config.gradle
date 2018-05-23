@@ -16,14 +16,15 @@ ext {
 }
 
 ext.encryptfile = { buildFlavor, buildVariant ->
-    def apiDirConfigFile = 'config.txt'
-
-    def folderName = 'confidential-file'
-    def folderPath = "$project.rootDir/${folderName}/${buildFlavor}/${buildVariant}/"
-    String fileContents = new File("$folderPath$apiDirConfigFile").text
+    def fileToBeEncryptedName = 'config.txt' //name of your file to be encrypted
+    def folder = 'confidential-file' // folder where your encrypted file is to be found
+    def folderPath = "$project.rootDir/${folder}/${buildFlavor}/${buildVariant}/" //this will resolve file path according to build flavor and build variant
+    String fileContents = new File("$folderPath$fileToBeEncryptedName").text // read contents of this file
+    // encryption logic
     def IV = new byte[16]
-    def encryption = Encryption.getDefault(encryptKey, encryptSalt, IV)
+    def encryption = Encryption.getDefault(encryptKey, encryptSalt, IV) //use encryptKey and encryptSalt defined above
     def data = encryption == null ? "" : encryption.encryptOrNull(fileContents)
+    // create file in generated assets folder which can be packaged into the selected flavor/variant apk
     def file = new File("$buildDir/generated/assets/shaders/$buildFlavor/$buildVariant/$ext.outputConfigFileName")
     if (!file.getParentFile().exists()) {
         file.getParentFile().mkdirs()
@@ -35,12 +36,14 @@ ext.encryptfile = { buildFlavor, buildVariant ->
             e.printStackTrace()
         }
     }
-    file.write data
+    file.write data //write encrypted data in file
 }
 
-def taskFlavorTypes = ["flavor1", "flavor2"]
-def taskVariant = ["debug", "release"]
+def taskFlavorTypes = ["flavor1", "flavor2"] //flavors defined for apk
+def taskVariant = ["debug", "release"] //variant defined for apk
 
+// generates gradle task dynamically which can be mapped for each build flavor and variant combination defined in above variables
+// for eg. tasks will be declared as "encryptFlavor1DebugConfig", "encryptFlavor1ReleaseConfig", "encryptFlavor2DebugConfig", "encryptFlavor2ReleaseConfig"
 taskFlavorTypes.each { buildFlavor ->
     taskVariant.each { buildVariant ->
         task "encrypt${buildFlavor.capitalize()}${buildVariant.capitalize()}Config" {
